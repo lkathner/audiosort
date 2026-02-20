@@ -40,7 +40,31 @@ namespace AudioSort
                 return false;
 
             int i = id.HasValue ? id.Value : _id;
-            return UnregisterHotKey(_wnd.Handle, i);
+            var b = UnregisterHotKey(_wnd.Handle, i);
+            return b;
+        }
+
+        public static bool UnregisterHotKey(List<int> ids)
+        {
+            if (ids == null || ids.Count == 0)
+            {
+                return UnregisterHotKey();
+            }
+
+            var b = true;
+            //foreach (var id in ids)
+            //{
+            //    b &= UnregisterHotKey(id);
+            //}
+
+            for (int j = ids.Count - 1; j >= 0; j--)
+            {
+                var id = ids[j];
+                b &= UnregisterHotKey(id);
+                ids.RemoveAt(j);
+            }
+
+            return b;
         }
 
 
