@@ -103,5 +103,8 @@
     <None Include="Resources\240_F_705806955_DBzOBnTWucSOIfqshWjBmOcE9lJmBCK0.jpg" />
     <None Include="Resources\240_F_705806955_DBzOBnTWucSOIfqshWjBmOcE9lJmBCK0.ico" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="samples\playlist.json" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

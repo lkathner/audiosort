@@ -8,7 +8,11 @@ namespace AudioSort
 {
     public class Playlist
     {
+        const string PLAYLIST = "Playlist";
+
         private string json;
+
+        public List<Song> Songs { get; set; }
 
         public Playlist(string json)
         {
@@ -17,7 +21,7 @@ namespace AudioSort
 
         public void Load(string json)
         {
-            this.json = json;
+            this.json = json; // TODO get a sample of json for source
 
             var jser = new System.Web.Script.Serialization.JavaScriptSerializer();
             var pl2 = (Dictionary<string, object>)jser.DeserializeObject(json);
@@ -25,12 +29,10 @@ namespace AudioSort
             //var json2 = System.Web.HttpUtility.UrlDecode(json);
             var json2 = json;
             var playlist = jser.Deserialize<Root>(json2);
-            var plNode = playlist.children.FirstOrDefault(c => string.Equals(c.name, "Playlist", StringComparison.OrdinalIgnoreCase));
+            var plNode = playlist.children.FirstOrDefault(c => string.Equals(c.name, PLAYLIST, StringComparison.OrdinalIgnoreCase));
 
             this.Songs = new List<Song>(plNode.children.Select(c => new Song(c)));
         }
-
-        public List<Song> Songs { get; set; }
 
         public Song GetSong(string title)
         {
@@ -40,6 +42,15 @@ namespace AudioSort
             var song = this.Songs.FirstOrDefault(n => n.Location.EndsWith(title, StringComparison.OrdinalIgnoreCase));
             return song;
         }
+
+        internal Song Pick(Status status)
+        {
+            var song = this.Songs.FirstOrDefault(n => n.Location.EndsWith(status.CurrentSong));
+            return song;
+        }
+
+
+        #region json representation
 
         // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
         public class Child
@@ -63,23 +74,21 @@ namespace AudioSort
             public List<Child> children { get; set; }
         }
 
-        internal Song Pick(Status status)
-        {
-            var song = this.Songs.FirstOrDefault(n => n.Location.EndsWith(status.CurrentSong));
-            return song;
-        }
+        #endregion
+
     }
 
     public class Song
     {
         private Playlist.Child c;
+        private string _uri;
 
         public Song(Playlist.Child c)
         {
             this.c = c;
 
             _uri = System.Web.HttpUtility.UrlDecode(c.uri);
-            this.Location = _uri.Substring(8); // remove file:///
+            this.Location = _uri.Substring(8); // remove file:/// // todo smarter
             this.Title = c.name;
 
 
@@ -90,7 +99,7 @@ namespace AudioSort
         }
 
         public string Title { get; set; }
-        //public string Uri { get; set; }
+
         public string Location { get; set; }
 
         public string Filename
@@ -103,10 +112,5 @@ namespace AudioSort
                 return null;
             }
         }
-
-        private string _uri;
     }
-
-
-
 }

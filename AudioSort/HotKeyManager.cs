@@ -11,6 +11,7 @@ namespace AudioSort
 {
     public class HotKeyManager
     {
+        public const int WM_HOTKEY = 0x312;
 
         [DllImport("user32")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -67,6 +68,40 @@ namespace AudioSort
             return b;
         }
 
+        public static int UnregisterHotKeys(List<int> ids)
+        {
+            if (ids == null)
+                return 0;
+
+            return UnregisterHotKeys(ids.ToArray());
+        }
+
+        public static int UnregisterHotKeys(params int[] ids)
+        {
+            int count = 0;
+
+            if (_wnd == null)
+                return count;
+
+            if (ids == null)
+                return count;
+
+            for (int j = ids.Length - 1; j >= 0; j--)
+            {
+                if (UnregisterHotKey(_wnd.Handle, ids[j]))
+                    count++;
+
+                //ids.RemoveAt(j);
+            }
+
+            if (!ids.Contains(_id))
+            {
+                if (UnregisterHotKey(_wnd.Handle, _id))
+                    count++;
+            }
+
+            return count;
+        }
 
         internal static void OnHotKeyPressed(HotKeyEventArgs e)
         {
@@ -75,26 +110,6 @@ namespace AudioSort
                 HotKeyManager.HotKeyPressed(null, e);
             }
         }
-
-        //private static MessageWindow _wnd = new MessageWindow();
-
-        //private class MessageWindow : Form
-        //{
-        //    protected override void WndProc(ref Message m)
-        //    {
-        //        if (m.Msg == WM_HOTKEY)
-        //        {
-        //            HotKeyEventArgs e = new HotKeyEventArgs(m.LParam);
-        //            HotKeyManager.OnHotKeyPressed(e);
-        //        }
-
-        //        base.WndProc(ref m);
-        //    }
-
-        //    private const int WM_HOTKEY = 0x312;
-        //}
-
-
     }
 
 

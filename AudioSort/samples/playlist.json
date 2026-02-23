@@ -1,0 +1,118 @@
+﻿{
+  "ro":"rw",
+  "type":"node",
+  "name":"",
+  "id":"0",
+  "children":[{
+      "ro":"ro",
+      "type":"node",
+      "name":"Playlist",
+      "id":"1",
+      "children":[{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Burn",
+          "id":"4",
+          "duration":399,
+          "uri":"file:///D:/media/The%20Crow%20OST/01.%20The%20Cure%20-%20Burn.mpc",
+          "current":"current"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Golgotha Tenement Blues",
+          "id":"5",
+          "duration":241,
+          "uri":"file:///D:/media/The%20Crow%20OST/02.%20Machines%20of%20Loving%20Grace%20-%20Golgotha%20Tenement%20Blues.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Big Empty",
+          "id":"6",
+          "duration":296,
+          "uri":"file:///D:/media/The%20Crow%20OST/03.%20Stone%20Temple%20Pilots%20-%20Big%20Empty.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Dead Souls",
+          "id":"7",
+          "duration":294,
+          "uri":"file:///D:/media/The%20Crow%20OST/04.%20Nine%20Inch%20Nails%20-%20Dead%20Souls.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Darkness",
+          "id":"8",
+          "duration":221,
+          "uri":"file:///D:/media/The%20Crow%20OST/05.%20Rage%20Against%20the%20Machine%20-%20Darkness.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Color Me Once",
+          "id":"9",
+          "duration":249,
+          "uri":"file:///D:/media/The%20Crow%20OST/06.%20Violent%20Femmes%20-%20Color%20Me%20Once.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Ghostrider",
+          "id":"10",
+          "duration":345,
+          "uri":"file:///D:/media/The%20Crow%20OST/07.%20Rollins%20Band%20-%20Ghostrider.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Milktoast",
+          "id":"11",
+          "duration":239,
+          "uri":"file:///D:/media/The%20Crow%20OST/08.%20Helmet%20-%20Milktoast.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"The Badge",
+          "id":"12",
+          "duration":234,
+          "uri":"file:///D:/media/The%20Crow%20OST/09.%20Pantera%20-%20The%20Badge.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Slip Slide Melting",
+          "id":"13",
+          "duration":347,
+          "uri":"file:///D:/media/The%20Crow%20OST/10.%20For%20Love%20Not%20Lisa%20-%20Slip%20Slide%20Melting.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"After the Flesh",
+          "id":"14",
+          "duration":179,
+          "uri":"file:///D:/media/The%20Crow%20OST/11.%20My%20Life%20with%20the%20Thrill%20Kill%20Kult%20-%20After%20the%20Flesh.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Snakedriver",
+          "id":"15",
+          "duration":221,
+          "uri":"file:///D:/media/The%20Crow%20OST/12.%20The%20Jesus%20and%20Mary%20Chain%20-%20Snakedriver.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"Time Baby III",
+          "id":"16",
+          "duration":232,
+          "uri":"file:///D:/media/The%20Crow%20OST/13.%20Medicine%20-%20Time%20Baby%20III.mpc"
+        },{
+          "ro":"rw",
+          "type":"leaf",
+          "name":"It Can't Rain All the Time",
+          "id":"17",
+          "duration":334,
+          "uri":"file:///D:/media/The%20Crow%20OST/14.%20Jane%20Siberry%20-%20It%20Can%27t%20Rain%20All%20the%20Time.mpc"
+        }]
+    },{
+      "ro":"ro",
+      "type":"node",
+      "name":"Media Library",
+      "id":"2",
+      "children":[]
+    }]
+}

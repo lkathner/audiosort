@@ -18,7 +18,6 @@ namespace AudioSort
 {
     public partial class Form1 : Form
     {
-        private const int WM_HOTKEY = 0x312;
         private List<int> _registeredIDs;
         Dictionary<int, List<Keys>> _activeKeys;
 
@@ -35,7 +34,7 @@ namespace AudioSort
 
         ~Form1()
         {
-            HotKeyManager.UnregisterHotKey(_registeredIDs);
+            HotKeyManager.UnregisterHotKeys(_registeredIDs);
             //HotKeyManager.RegisterHotKey( this, Keys.A, KeyModifiers.Alt);
 
         }
@@ -44,6 +43,8 @@ namespace AudioSort
         protected override void OnLoad(EventArgs e)
         {
             base.OnLoad(e);
+
+            this.btnStart.Enabled = false;
 
             _registeredIDs = new List<int>();
 
@@ -62,10 +63,7 @@ namespace AudioSort
             }
             catch (Exception ex)
             {
-                var msg2 = "Couldn't register hotkeys?";
-                ShowBrokeIt(ex, msg2);
-
-                this.btnStart.Enabled = false;
+                ShowBrokeIt(ex, "Couldn't attach hotkeys?");
                 return;
             }
 
@@ -76,19 +74,20 @@ namespace AudioSort
             catch (Exception ex)
             {
                 ShowBrokeIt(ex, @"tried to get playlist and it exploded");
+                return;
             }
         }
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            HotKeyManager.UnregisterHotKey(_registeredIDs);
+            HotKeyManager.UnregisterHotKeys(_registeredIDs);
 
             base.OnClosing(e);
         }
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == WM_HOTKEY)
+            if (m.Msg == HotKeyManager.WM_HOTKEY)
             {
                 var e = new HotKeyEventArgs(m.LParam);
                 HotKeyManager.OnHotKeyPressed(e);
@@ -100,16 +99,18 @@ namespace AudioSort
 
         private void btnSelectFolder_Click(object sender, EventArgs e)
         {
+            // TODO this is the playlist button, not currently implemented
+
             var ofd = new OpenFileDialog
             {
-                ValidateNames = false,
-                CheckFileExists = false
+                //ValidateNames = false,
+                //CheckFileExists = false
             };
 
-            if (ofd.ShowDialog() == DialogResult.OK)
-            {
-                this.txtSourceFolder.Text = System.IO.Path.GetDirectoryName(ofd.FileName);
-            }
+            //if (ofd.ShowDialog() == DialogResult.OK)
+            //{
+            //    this.txtSourceFolder.Text = System.IO.Path.GetDirectoryName(ofd.FileName);
+            //}
         }
 
 
@@ -177,12 +178,15 @@ namespace AudioSort
 
         private void ShowBrokeIt(Exception ex, string msgmessage = null)
         {
+            // TODO clean up redundant calls to this
+            // should only get called when something unexpected happens
+
             var s = "what are you doing, stop it";
             try
             {
                 this.toolStripStatusLabel1.Text = s;
 
-                var m2 = innerMessage(ex);
+                //var m2 = innerMessage(ex);
                 var msg = new StringBuilder();
 
                 if (!string.IsNullOrWhiteSpace(msgmessage))
@@ -193,7 +197,7 @@ namespace AudioSort
                     msg.AppendLine();
                 }
 
-                msg.Append(m2);
+                //msg.Append(m2);
 
                 var frm = new BrokeIt
                 {
@@ -201,7 +205,7 @@ namespace AudioSort
                     //Height = 280 + 80
                 };
 
-                frm.SetMessage(m2);
+                frm.SetMessage(msg.ToString());
                 frm.ShowDialog();
             }
             catch (Exception ex2)
@@ -211,31 +215,22 @@ namespace AudioSort
         }
 
 
-        private void RefreshPlaylist()
+        private async void RefreshPlaylist()
         {
+            this.btnStart.Enabled = false;
+            _playlist = null;
+
             try
             {
-                GetPlaylistInfo();
-                this.toolStripStatusLabel1.Text = "Retrieved playlist.";
+                _playlist = await VLC.GetPlaylistInfo();
+                this.toolStripStatusLabel1.Text = $"Retrieved playlist, {_playlist.Songs.Count} items";
             }
             catch (Exception ex)
             {
-                this.toolStripStatusLabel1.Text = $"Couldn't get playlist: {innerMessage(ex)}";
+                this.toolStripStatusLabel1.Text = $"Couldn't get playlist: {ex.Message}";
             }
-        }
 
-        private void GetPlaylistInfo()
-        {
-            var json = VLC.GetPlaylistJson();
-            //System.Diagnostics.Debug.WriteLine(json);
-
-
-            //var jser = new System.Web.Script.Serialization.JavaScriptSerializer();
-            //var playlist = jser.Deserialize<Playlist>(json);
-            //var pl2 = jser.DeserializeObject(json);
-
-            var pl3 = new Playlist(json);
-            _playlist = pl3;
+            this.btnStart.Enabled = true;
         }
 
 
@@ -245,10 +240,7 @@ namespace AudioSort
 
             HotKeyManager.HotKeyPressed += new EventHandler<HotKeyEventArgs>(HotKeyManager_HotKeyPressed);
 
-            //var _activeKeys = new Keys[0]; //{ Keys.D1, Keys.D2, Keys.NumPad1, Keys.NumPad2 };
-            //var _activeKeys = new List<Keys>();
             _activeKeys = new Dictionary<int, List<Keys>>();
-
             _activeKeys.Add(1, new List<Keys> { Keys.D1, Keys.NumPad1, });
             _activeKeys.Add(2, new List<Keys> { Keys.D2, Keys.NumPad2, });
 
@@ -280,7 +272,7 @@ namespace AudioSort
         }
 
 
-        private void HandleHotkeys(HotKeyEventArgs e)
+        private async void HandleHotkeys(HotKeyEventArgs e)
         {
             var mod = KeyModifiers.Control | KeyModifiers.Shift;
 
@@ -297,6 +289,10 @@ namespace AudioSort
                 return;
             }
 
+            Status status;
+
+            // TODO rewrite to find _activeKeys entry for the event key first, should only be 1 match at most
+
             foreach (var kvp in _activeKeys)
             {
                 int crateID = kvp.Key;
@@ -304,13 +300,16 @@ namespace AudioSort
 
                 if (!crateKeys.Contains(e.Key))
                 {
-                    continue;
+                    continue; // some key we're not monitoring
                 }
 
-                var status = GetCurrentStatus();
-                if (status == null)
+                try
                 {
-                    this.toolStripStatusLabel1.Text = $"Status unavailable (VLC not running?)";
+                    status = await VLC.GetCurrentStatus();
+                }
+                catch (Exception ex)
+                {
+                    this.toolStripStatusLabel1.Text = $"Could not get status from VLC: {ex.Message}";
                     return;
                 }
 
@@ -342,21 +341,6 @@ namespace AudioSort
             }
         }
 
-
-        private Status GetCurrentStatus()
-        {
-            try
-            {
-                var json = VLC.GetStatusJson();
-                var status = new Status(json);
-                return status;
-            }
-            catch (Exception ex)
-            {
-                this.toolStripStatusLabel1.Text = $"Couldn't get VLC status: {innerMessage(ex)}";
-                return null;
-            }
-        }
 
         private string SelectFolder()
         {
@@ -391,9 +375,17 @@ namespace AudioSort
                 }
             }
 
+            var song = _playlist.Pick(status);
+            if (song == null)
+            {
+                this.toolStripStatusLabel1.Text = $"Could not match file to song {status.CurrentSong}";
+                return;
+            }
+
+
             if (string.IsNullOrWhiteSpace(folder))
             {
-                this.toolStripStatusLabel1.Text = $"No folder name provided.";
+                this.toolStripStatusLabel1.Text = $"No destination folder name provided.";
                 return;
             }
 
@@ -406,37 +398,27 @@ namespace AudioSort
                 }
                 catch (Exception ex)
                 {
-                    var s = $"Folder [{folder}] doesn't exist and couldn't be created.";
-                    ShowBrokeIt(ex, s);
+                    this.toolStripStatusLabel1.Text = $"Folder [{folder}] doesn't exist and couldn't be created: {ex.Message}.";
                     return;
                 }
             }
 
-            var song = _playlist.Pick(status);
-            if (song == null)
+            string dest = System.IO.Path.Combine(folder, song.Filename);
+            if (System.IO.File.Exists(dest))
             {
-                this.toolStripStatusLabel1.Text = $"Could not match file to song {status.CurrentSong}";
+                this.toolStripStatusLabel1.Text = $"File {song.Filename} already in crate, skipping";
                 return;
             }
 
             try
             {
-                string dest = System.IO.Path.Combine(folder, song.Filename);
-                if (System.IO.File.Exists(dest))
-                {
-                    this.toolStripStatusLabel1.Text = $"File {song.Filename} already in crate";
-                }
-                else
-                {
-                    System.IO.File.Copy(song.Location, dest);
-                    this.toolStripStatusLabel1.Text = $"File copied to {dest}";
-                }
+                System.IO.File.Copy(song.Location, dest);
+                this.toolStripStatusLabel1.Text = $"File copied to {dest}";
             }
             catch (Exception ex)
             {
                 this.toolStripStatusLabel1.Text = $"File copy failed: {ex.Message}";
-                var s = $"File copy failed?";
-                ShowBrokeIt(ex, s);
+                return;
             }
 
         }
@@ -454,27 +436,6 @@ namespace AudioSort
 
             config.Save(ConfigurationSaveMode.Modified);
             //ConfigurationManager.RefreshSection("appSettings");
-        }
-
-        private string innerMessage(Exception ex)
-        {
-            string msg = string.Empty;
-
-            var x = ex;
-            while (x != null)
-            {
-                msg = x.Message;
-
-                if (x.HResult == -2147467259) 	  // connection refused
-                {
-                    msg = "VLC not running";
-                    break;
-                }
-
-                x = x.InnerException;
-            }
-
-            return msg;
         }
 
     }
