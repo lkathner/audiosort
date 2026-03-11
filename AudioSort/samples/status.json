@@ -1,0 +1,72 @@
+﻿{
+    "fullscreen":0,
+    "stats":{
+        "inputbitrate":0.025858586654067,
+        "sentbytes":0,
+        "lostabuffers":0,
+        "averagedemuxbitrate":0,
+        "readpackets":260,
+        "demuxreadpackets":0,
+        "lostpictures":0,
+        "displayedpictures":0,
+        "sentpackets":0,
+        "demuxreadbytes":37846264,
+        "demuxbitrate":0.35272228717804,
+        "playedabuffers":4106,
+        "demuxdiscontinuity":0,
+        "decodedaudio":8212,
+        "sendbitrate":0,
+        "readbytes":2635408,
+        "averageinputbitrate":0,
+        "demuxcorrupted":0,
+        "decodedvideo":0
+    },
+  "audiodelay":0,
+  "apiversion":3,
+  "currentplid":3,
+  "time":106,
+  "volume":256,
+  "length":399,
+  "random":false,
+  "audiofilters":{
+      "filter_0":""
+  },
+  "rate":1,
+  "videoeffects":{
+      "hue":0,
+      "saturation":1,
+      "contrast":1,
+      "brightness":1,
+      "gamma":1
+  },
+  "state":"paused",
+  "loop":false,
+  "version":"3.0.3 Vetinari",
+  "position":0.26757320761681,
+  "information":{
+      "chapter":0,
+      "chapters":[],
+      "title":0,
+      "category":{
+          "meta":{
+              "album":"The Crow (Original Motion Picture Soundtrack)",
+              "track_number":"1",
+              "filename":"01. The Cure - Burn.mpc",
+              "title":"Burn",
+              "artist":"The Cure",
+              "ALBUMARTIST":"Various"
+          },
+        "Stream 0":{
+            "Codec":"32 bits float LE (f32l)",
+            "Channels":"Stereo",
+            "Bits_per_sample":"32",
+            "Type":"Audio",
+            "Sample_rate":"44100 Hz"
+        }
+      },
+    "titles":[]
+  },
+  "repeat":false,
+  "subtitledelay":0,
+  "equalizer":[]
+}

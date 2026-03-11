@@ -8,10 +8,21 @@ namespace AudioSort
 {
     public class Status
     {
+        const string PLAYING = "playing";
+        const string PAUSED = "paused";
+        const string STOPPED = "stopped";
+
         private string json;
 
         public string State { get; set; }
         public string CurrentSong { get; set; }
+        public int Time { get; set; }
+        public int Length { get; set; }
+
+        public bool IsPlaying
+        {
+            get { return string.Equals(this.State, PLAYING); }
+        }
 
         public Status(string json = null)
         {
@@ -21,34 +32,21 @@ namespace AudioSort
             }
         }
 
-        public void Load(string json)
+        public void Load(string json2)
         {
 
-            //var plNode = playlist.children.FirstOrDefault(c => string.Equals(c.name, "Playlist", StringComparison.OrdinalIgnoreCase));
-
-
-            this.json = json;
+            this.json = json2;
 
             var jser = new System.Web.Script.Serialization.JavaScriptSerializer();
-            var pl2 = (Dictionary<string, object>)jser.DeserializeObject(json);
-
-            //var json2 = System.Web.HttpUtility.UrlDecode(json);
-            var json2 = json;
             var status = jser.Deserialize<Root>(json2);
 
             this.State = status?.state;
             this.CurrentSong = status.information?.category?.meta?.filename?.Trim();
+            this.Time = status.time;
+            this.Length = status.length;
 
         }
 
-        //public static string GetCurrentFile()
-        //{
-        //    var jser = new System.Web.Script.Serialization.JavaScriptSerializer();
-        //    var json2 = System.Web.HttpUtility.UrlDecode(json);
-        //    var root = jser.Deserialize<Root>(json2);
-
-        //    root.information.category.meta.filename;
-        //}
 
         // Root myDeserializedClass = JsonConvert.DeserializeObject<Root>(myJsonResponse);
         public class Audiofilters

@@ -18,11 +18,18 @@ namespace AudioSort
 {
     public partial class Form1 : Form
     {
+        private HockeyManager _hkm;
         private List<int> _registeredIDs;
-        Dictionary<int, List<Keys>> _activeKeys;
+        private CrateList _activeCrates;
 
         private Playlist _playlist;
+        private Timer _timer;
 
+        public string _info
+        {
+            //get { return this.toolStripStatusLabel1.Text; }
+            set { this.toolStripStatusLabel1.Text = value; }
+        }
 
         public Form1()
         {
@@ -34,8 +41,7 @@ namespace AudioSort
 
         ~Form1()
         {
-            HotKeyManager.UnregisterHotKeys(_registeredIDs);
-            //HotKeyManager.RegisterHotKey( this, Keys.A, KeyModifiers.Alt);
+            // HockeyManager.UnregisterHotKeys(_registeredIDs); // does not get called?
 
         }
 
@@ -44,10 +50,20 @@ namespace AudioSort
         {
             base.OnLoad(e);
 
+            _info = "loading...";
+            btnStart.Focus();
+
             this.btnStart.Enabled = false;
 
+            _hkm = new HockeyManager(this);
             _registeredIDs = new List<int>();
 
+            _timer = new Timer();
+            _timer.Tick += _timer_Tick;
+
+            Util.ConfigUpdated += Wnd_ConfigUpdated;
+
+            /* todo remove after commit
             this.txtFolder1.Text = ConfigurationManager.AppSettings["txtFolder1"];
             this.txtFolder2.Text = ConfigurationManager.AppSettings["txtFolder2"];
 
@@ -56,6 +72,17 @@ namespace AudioSort
             var password = ConfigurationManager.AppSettings["password"];
 
             VLC.Set(port, user, password);
+            */
+
+            try
+            {
+                LoadSettings();
+            }
+            catch (Exception ex)
+            {
+                ShowBrokeIt(ex, "couldn't load saved settings");
+                return; // fatal error, user won't be able to fix
+            }
 
             try
             {
@@ -67,6 +94,19 @@ namespace AudioSort
                 return;
             }
 
+            if (VLC.Settings.AutoStart)
+            {
+                try
+                {
+                    VLC.Launch();
+                }
+                catch (Exception ex)
+                {
+                    _info = $"couldn't start VLC: {ex.Message}";
+                    return;
+                }
+            }
+
             try
             {
                 RefreshPlaylist();
@@ -76,27 +116,39 @@ namespace AudioSort
                 ShowBrokeIt(ex, @"tried to get playlist and it exploded");
                 return;
             }
+
+            try
+            {
+                RefreshStatus();
+            }
+            catch (Exception ex)
+            {
+                ShowBrokeIt(ex, @"tried to get status and it exploded");
+                return;
+            }
         }
 
         protected override void OnClosing(CancelEventArgs e)
         {
-            HotKeyManager.UnregisterHotKeys(_registeredIDs);
+            _hkm.UnregisterHotKeys(_registeredIDs);
 
             base.OnClosing(e);
         }
 
         protected override void WndProc(ref Message m)
         {
-            if (m.Msg == HotKeyManager.WM_HOTKEY)
+            if (m.Msg == HockeyManager.WM_HOTKEY)
             {
                 var e = new HotKeyEventArgs(m.LParam);
-                HotKeyManager.OnHotKeyPressed(e);
+                HockeyManager.OnHotKeyPressed(e);
             }
 
             base.WndProc(ref m);
         }
 
+        #region events
 
+        /* todo remove after commit
         private void btnSelectFolder_Click(object sender, EventArgs e)
         {
             // TODO this is the playlist button, not currently implemented
@@ -112,33 +164,56 @@ namespace AudioSort
             //    this.txtSourceFolder.Text = System.IO.Path.GetDirectoryName(ofd.FileName);
             //}
         }
+        */
 
+        private void miVLCSetup_Click(object sender, EventArgs e)
+        {
+            ShowSettingsWnd();
+        }
+
+        private void miPreferences_Click(object sender, EventArgs e)
+        {
+            ShowPreferencesWnd();
+        }
 
         private void btnSelect1_Click(object sender, EventArgs e)
         {
-            this.txtFolder1.Text = SelectFolder();
+            var btn = (Button)sender;
+            int crateID = (int)btn.Tag;
+            var crate = _activeCrates.FirstOrDefault(n => n.ID == crateID);
 
-            string key = "txtFolder1";
-            UpdateFileSetting(key, this.txtFolder1.Text);
+            if (crate == null)
+                throw new Exception($"invalid crate button tag {btn.Tag}");
 
+            string path;
+            if (Util.UserSelectFolder(crate.InputControl.Text, out path))
+            {
+                crate.InputControl.Text = path;
+                UpdateCratePath(crate, path);
+            }
         }
 
+        /* todo remove after commit
         private void btnSelect2_Click(object sender, EventArgs e)
         {
-            this.txtFolder2.Text = SelectFolder();
-
-            string key = "txtFolder2";
-            UpdateFileSetting(key, this.txtFolder2.Text);
-        }
-
-        private void txtFolder1_TextChanged(object sender, EventArgs e)
-        {
+            var input = txtFolder2;
 
         }
+        */
 
-        private void txtFolder2_TextChanged(object sender, EventArgs e)
+        private void txtCrateFolder_Leave(object sender, EventArgs e)
         {
+            var input = (TextBox)sender;
+            int crateID = (int)input.Tag;
+            var path = !string.IsNullOrWhiteSpace(input.Text)
+                ? input.Text.Trim()
+                : null;
 
+            var crate = _activeCrates.FirstOrDefault(n => n.ID == crateID);
+            if (crate == null)
+                throw new Exception($"invalid crate input tag {input.Tag}");
+
+            UpdateCratePath(crate, path);
         }
 
 
@@ -147,22 +222,35 @@ namespace AudioSort
 
             try
             {
-                RefreshPlaylist();
+                RefreshStatus();
             }
             catch (Exception ex)
             {
-                ShowBrokeIt(ex, @"tried to get playlist and it exploded");
+                ShowBrokeIt(ex, @"tried to get status and it exploded");
             }
 
         }
 
+        /* todo remove after commit
         private void btnStop_Click(object sender, EventArgs e)
         {
             this.toolStripStatusLabel1.Text = string.Empty;
         }
+        */
 
+        private void _timer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                RefreshStatus();
+            }
+            catch (Exception ex)
+            {
+                ShowBrokeIt(ex, @"tried to get status and it exploded");
+            }
+        }
 
-        void HotKeyManager_HotKeyPressed(object sender, HotKeyEventArgs e)
+        private void HockeyManager_HotKeyPressed(object sender, HotKeyEventArgs e)
         {
 
             try
@@ -176,28 +264,93 @@ namespace AudioSort
 
         }
 
+        private void Wnd_ConfigUpdated(object sender, ConfigUpdatedEventArgs e)
+        {
+            // refresh values from config
+            try
+            {
+                LoadSettings();
+                _info = $"reloaded settings";
+            }
+            catch (Exception ex)
+            {
+                ShowBrokeIt(ex, "couldn't load saved settings");
+            }
+        }
+
+        #endregion
+
+
+        #region support methods
+
+        private void LoadSettings()
+        {
+            btnSelect1.Tag = 1;
+            btnSelect2.Tag = 2;
+
+            _activeCrates = new CrateList();
+            _activeCrates.Add(0, new TextBox()); // for testing
+            _activeCrates.Add(1, txtFolder1);
+            _activeCrates.Add(2, txtFolder2);
+
+            if (!VLC.LoadConfig())
+            {
+                ShowSettingsWnd();
+            }
+        }
+
+        private void ShowSettingsWnd()
+        {
+            var wnd = new VLCSetup();
+            if (this.OwnedForms.Any(n => string.Equals(n.Name, wnd.Name)))
+            {
+                return;
+            }
+
+            wnd.Location = new Point(this.Location.X + this.Size.Width, this.Location.Y);
+            wnd.Show(this);
+        }
+
+        private void ShowPreferencesWnd()
+        {
+            var wnd = new AppPrefs();
+            if (this.OwnedForms.Any(n => string.Equals(n.Name, wnd.Name)))
+            {
+                return;
+            }
+
+            wnd.Location = new Point(this.Location.X + this.Size.Width, this.Location.Y + this.Size.Height);
+            wnd.Show(this);
+        }
+
         private void ShowBrokeIt(Exception ex, string msgmessage = null)
         {
+            Util.ShowBrokeItWnd(ex, msgmessage);
+            return;
+
             // TODO clean up redundant calls to this
             // should only get called when something unexpected happens
 
             var s = "what are you doing, stop it";
             try
             {
-                this.toolStripStatusLabel1.Text = s;
+                _info = s;
 
-                //var m2 = innerMessage(ex);
                 var msg = new StringBuilder();
 
                 if (!string.IsNullOrWhiteSpace(msgmessage))
                 {
-                    this.toolStripStatusLabel1.Text = msgmessage;
+                    _info = msgmessage;
 
                     msg.AppendLine(msgmessage);
                     msg.AppendLine();
                 }
 
                 //msg.Append(m2);
+                if (ex != null)
+                {
+                    msg.AppendLine(ex.Message);
+                }
 
                 var frm = new BrokeIt
                 {
@@ -206,7 +359,7 @@ namespace AudioSort
                 };
 
                 frm.SetMessage(msg.ToString());
-                frm.ShowDialog();
+                frm.Show();
             }
             catch (Exception ex2)
             {
@@ -214,7 +367,39 @@ namespace AudioSort
             }
         }
 
+        /// <summary>
+        /// get current media and activity from vlc
+        /// </summary>
+        private async void RefreshStatus()
+        {
+            this.btnStart.Enabled = false;
 
+            if (_timer.Enabled)
+                _timer.Stop();
+
+            try
+            {
+                var vlcStatus = await VLC.GetCurrentStatus();
+                _info = $"[{vlcStatus.State}] {vlcStatus.CurrentSong}".Trim();
+
+                if (vlcStatus.IsPlaying)
+                {
+                    var tremain = vlcStatus.Length - vlcStatus.Time; // in seconds
+                    _timer.Interval = (tremain + 2) * 1000; // ms
+                    _timer.Start();
+                }
+            }
+            catch (Exception ex)
+            {
+                _info = $"Couldn't get status from VLC: {ex.Message}";
+            }
+
+            this.btnStart.Enabled = true;
+        }
+
+        /// <summary>
+        /// get current playlist items from vlc
+        /// </summary>
         private async void RefreshPlaylist()
         {
             this.btnStart.Enabled = false;
@@ -223,35 +408,30 @@ namespace AudioSort
             try
             {
                 _playlist = await VLC.GetPlaylistInfo();
-                this.toolStripStatusLabel1.Text = $"Retrieved playlist, {_playlist.Songs.Count} items";
+                _info = $"Retrieved playlist, {_playlist.Songs.Count} items";
             }
             catch (Exception ex)
             {
-                this.toolStripStatusLabel1.Text = $"Couldn't get playlist: {ex.Message}";
+                _info = $"Couldn't get playlist: {ex.Message}";
             }
 
             this.btnStart.Enabled = true;
         }
 
-
+        /// <summary>
+        /// register hotkeys with the system
+        /// </summary>
         private void EnableHotKeys()
         {
             var mod = KeyModifiers.Control | KeyModifiers.Shift;
 
-            HotKeyManager.HotKeyPressed += new EventHandler<HotKeyEventArgs>(HotKeyManager_HotKeyPressed);
+            HockeyManager.HotKeyPressed += new EventHandler<HotKeyEventArgs>(HockeyManager_HotKeyPressed);
 
-            _activeKeys = new Dictionary<int, List<Keys>>();
-            _activeKeys.Add(1, new List<Keys> { Keys.D1, Keys.NumPad1, });
-            _activeKeys.Add(2, new List<Keys> { Keys.D2, Keys.NumPad2, });
-
-
-            foreach (var kvp in _activeKeys)
+            foreach (var crate in _activeCrates)
             {
-                var keys = kvp.Value;
-
-                foreach (var k in keys)
+                foreach (var k in crate.KBKeys)
                 {
-                    int d = HotKeyManager.RegisterHotKey(this, k, mod);
+                    int d = _hkm.RegisterHotKey(k, mod);
                     _registeredIDs.Add(d);
                 }
             }
@@ -272,17 +452,15 @@ namespace AudioSort
         }
 
 
+        /// <summary>
+        /// determine what to do when a hotkey is pressed
+        /// </summary>
+        /// <param name="e"></param>
         private async void HandleHotkeys(HotKeyEventArgs e)
         {
             var mod = KeyModifiers.Control | KeyModifiers.Shift;
 
             //            https://wiki.videolan.org/VLC_HTTP_requests/
-
-            if (_activeKeys == null)
-            {
-                this.toolStripStatusLabel1.Text = $"No hotkeys enabled. (how did you get here?)";
-                return;
-            }
 
             if (!e.Modifiers.HasFlag(mod))
             {
@@ -290,58 +468,40 @@ namespace AudioSort
             }
 
             Status status;
+            var result = CopyResult.None;
 
-            // TODO rewrite to find _activeKeys entry for the event key first, should only be 1 match at most
-
-            foreach (var kvp in _activeKeys)
+            try
             {
-                int crateID = kvp.Key;
-                var crateKeys = kvp.Value;
-
-                if (!crateKeys.Contains(e.Key))
-                {
-                    continue; // some key we're not monitoring
-                }
-
-                try
-                {
-                    status = await VLC.GetCurrentStatus();
-                }
-                catch (Exception ex)
-                {
-                    this.toolStripStatusLabel1.Text = $"Could not get status from VLC: {ex.Message}";
-                    return;
-                }
-
-                if (string.IsNullOrWhiteSpace(status.CurrentSong))
-                {
-                    this.toolStripStatusLabel1.Text = $"No song info available (currently {status.State}).";
-                    return;
-                }
-
-                string folder = string.Empty;
-                switch (crateID)
-                {
-                    case 1:
-                        folder = this.txtFolder1.Text.Trim();
-                        if (!string.IsNullOrWhiteSpace(folder))
-                            CopyToCrate(status, folder);
-                        break;
-
-                    case 2:
-                        folder = this.txtFolder2.Text.Trim();
-                        if (!string.IsNullOrWhiteSpace(folder))
-                            CopyToCrate(status, folder);
-                        break;
-
-                    default:
-                        this.toolStripStatusLabel1.Text = $"Unexpected crate {crateID}, no action taken.";
-                        break;
-                }
+                status = await VLC.GetCurrentStatus();
             }
+            catch (Exception ex)
+            {
+                _info = $"Could not get status from VLC: {ex.Message}";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(status.CurrentSong))
+            {
+                _info = $"No song info available (currently {status.State}).";
+                return;
+            }
+
+            var crate = _activeCrates.FindByPressedKey(e.Key);
+            if (crate != null)
+            {
+                result = CopyToCrate(status, crate);
+            }
+            else // for testing
+            {
+                result = CopyResult.Problem;
+                ShowBrokeIt(new Exception("crate 0 hotkey test"));
+            }
+
+            Util.PlayStatusSound(result);
         }
 
 
+        /* todo remove after commit
         private string SelectFolder()
         {
 
@@ -361,69 +521,95 @@ namespace AudioSort
 
             return string.Empty;
         }
+        */
 
-        private void CopyToCrate(Status status, string folder)
+        private CopyResult CopyToCrate(Status status, Crate crate)
         {
+            var fresh = false;
+
             if (_playlist == null)
             {
                 RefreshPlaylist();
+                fresh = true;
+
                 if (_playlist == null)
                 {
                     // no playlist available, can't do anything
                     // RefreshPlaylist sets status text, do not change
-                    return;
+                    return CopyResult.Problem;
                 }
             }
 
             var song = _playlist.Pick(status);
-            if (song == null)
+            if (song == null && !fresh)
             {
-                this.toolStripStatusLabel1.Text = $"Could not match file to song {status.CurrentSong}";
-                return;
+                RefreshPlaylist();
+                fresh = true;
+
+                if (_playlist != null)
+                    song = _playlist.Pick(status);
             }
 
+            if (song == null)
+            {
+                _info = $"Could not match file to song {status.CurrentSong}";
+                return CopyResult.Problem;
+            }
+
+            // --- todo move up when reorganizing
+            string folder = crate.FolderPath;
 
             if (string.IsNullOrWhiteSpace(folder))
             {
-                this.toolStripStatusLabel1.Text = $"No destination folder name provided.";
-                return;
+                _info = $"No destination folder name provided.";
+                return CopyResult.Problem;
             }
 
-            folder = folder.Trim();
-            if (!System.IO.Directory.Exists(folder))
+            try
             {
-                try
-                {
+                if (!Directory.Exists(folder))
                     System.IO.Directory.CreateDirectory(folder);
-                }
-                catch (Exception ex)
-                {
-                    this.toolStripStatusLabel1.Text = $"Folder [{folder}] doesn't exist and couldn't be created: {ex.Message}.";
-                    return;
-                }
             }
+            catch (Exception ex)
+            {
+                _info = $"Folder [{folder}] doesn't exist and couldn't be created: {ex.Message}.";
+                return CopyResult.Problem;
+            }
+            // ---
 
             string dest = System.IO.Path.Combine(folder, song.Filename);
             if (System.IO.File.Exists(dest))
             {
-                this.toolStripStatusLabel1.Text = $"File {song.Filename} already in crate, skipping";
-                return;
+                var fiNew = new FileInfo(song.Location);
+                var fiExists = new FileInfo(dest);
+
+                if (fiNew.Length != fiExists.Length)
+                {
+                    _info = $"Existing file conflict at {dest}";
+                    return CopyResult.Problem;
+                }
+
+                // assume same file
+                _info = $"File {song.Filename} already in crate, skipping";
+                return CopyResult.None;
             }
 
             try
             {
                 System.IO.File.Copy(song.Location, dest);
-                this.toolStripStatusLabel1.Text = $"File copied to {dest}";
+                _info = $"File copied to {dest}";
+                return CopyResult.Success;
             }
             catch (Exception ex)
             {
-                this.toolStripStatusLabel1.Text = $"File copy failed: {ex.Message}";
-                return;
+                _info = $"File copy failed: {ex.Message}";
+                return CopyResult.Problem;
             }
 
         }
 
 
+        /* todo remove after commit
         private void UpdateFileSetting(string key, string text)
         {
             if (string.IsNullOrWhiteSpace(text))
@@ -437,6 +623,41 @@ namespace AudioSort
             config.Save(ConfigurationSaveMode.Modified);
             //ConfigurationManager.RefreshSection("appSettings");
         }
+        */
+
+        private void UpdateCratePath(Crate crate, string path)
+        {
+            if (path != null)
+            {
+                var current = crate.FolderPath;
+                if (string.Equals(current, path, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return; // same path, nothing to change
+                }
+
+                crate.FolderPath = path;
+            }
+            else // path null
+            {
+                // todo sort this out if dynamic crates implemented
+                // -----------
+                //if (!_crates2.Remove(crate))
+                //    return; // no crate path saved, nothing to change
+                // -----------
+                crate.FolderPath = string.Empty;
+                // -----------
+            }
+
+            var data = new Dictionary<string, string>();
+            data.Add(crate.ConfigKey, crate.FolderPath);
+
+            // todo rename txt inputs, add null entry to data to remove old key
+
+            AppConfig.UpdateConfigFile(data);
+            _info = "config file updated";
+        }
+
+        #endregion
 
     }
 }

@@ -3,15 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
 namespace AudioSort
 {
-    public class HotKeyManager
+    public class HockeyManager
     {
         public const int WM_HOTKEY = 0x312;
+        public const int WM_KEYDOWN = 0x0100;
+        public const int WM_KEYUP = 0x0101;
+        public const int WM_SYSKEYDOWN = 0x0104;
+        public const int WM_SYSKEYUP = 0x0105;
 
         [DllImport("user32")]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
@@ -21,20 +24,28 @@ namespace AudioSort
 
         private static int _id = 0;
 
-        private static Form _wnd; // = new MessageWindow();
+        private Form _wnd;
 
+        // put modifiers on instance todo?
 
         public static event EventHandler<HotKeyEventArgs> HotKeyPressed;
 
-        public static int RegisterHotKey(Form form, Keys key, KeyModifiers modifiers)
+        public HockeyManager(Form form)
         {
             _wnd = form;
+        }
+
+        public int RegisterHotKey(Keys key, KeyModifiers modifiers)
+        {
+            if (_wnd == null)
+                throw new Exception("not attached to window");
 
             int id = System.Threading.Interlocked.Increment(ref _id);
             RegisterHotKey(_wnd.Handle, id, (uint)modifiers, (uint)key);
             return id;
         }
 
+        /* todo remove after commit
         public static bool UnregisterHotKey(int? id = null)
         {
             if (_wnd == null)
@@ -67,21 +78,19 @@ namespace AudioSort
 
             return b;
         }
+        */
 
-        public static int UnregisterHotKeys(List<int> ids)
+        public int UnregisterHotKeys(List<int> ids)
         {
-            if (ids == null)
-                return 0;
-
-            return UnregisterHotKeys(ids.ToArray());
+            return UnregisterHotKeys(ids?.ToArray());
         }
 
-        public static int UnregisterHotKeys(params int[] ids)
+        public int UnregisterHotKeys(params int[] ids)
         {
             int count = 0;
 
             if (_wnd == null)
-                return count;
+                throw new Exception("not attached to window");
 
             if (ids == null)
                 return count;
@@ -94,20 +103,23 @@ namespace AudioSort
                 //ids.RemoveAt(j);
             }
 
-            if (!ids.Contains(_id))
+            if (_id != 0 && !ids.Contains(_id))
             {
                 if (UnregisterHotKey(_wnd.Handle, _id))
                     count++;
+
+                throw new Exception($"unknown hotkey id {_id} was registered");
             }
 
             return count;
         }
 
+        // todo non static event
         internal static void OnHotKeyPressed(HotKeyEventArgs e)
         {
-            if (HotKeyManager.HotKeyPressed != null)
+            if (HockeyManager.HotKeyPressed != null)
             {
-                HotKeyManager.HotKeyPressed(null, e);
+                HockeyManager.HotKeyPressed(null, e);
             }
         }
     }

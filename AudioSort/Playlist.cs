@@ -8,7 +8,7 @@ namespace AudioSort
 {
     public class Playlist
     {
-        const string PLAYLIST = "Playlist";
+        const string PLAYLIST = "Playlist"; // json node name for list
 
         private string json;
 
@@ -19,29 +19,17 @@ namespace AudioSort
             this.Load(json);
         }
 
-        public void Load(string json)
+        public void Load(string json2)
         {
-            this.json = json; // TODO get a sample of json for source
+            this.json = json2;
 
             var jser = new System.Web.Script.Serialization.JavaScriptSerializer();
-            var pl2 = (Dictionary<string, object>)jser.DeserializeObject(json);
-
-            //var json2 = System.Web.HttpUtility.UrlDecode(json);
-            var json2 = json;
             var playlist = jser.Deserialize<Root>(json2);
             var plNode = playlist.children.FirstOrDefault(c => string.Equals(c.name, PLAYLIST, StringComparison.OrdinalIgnoreCase));
 
             this.Songs = new List<Song>(plNode.children.Select(c => new Song(c)));
         }
 
-        public Song GetSong(string title)
-        {
-            if (this.Songs == null)
-                return null;
-
-            var song = this.Songs.FirstOrDefault(n => n.Location.EndsWith(title, StringComparison.OrdinalIgnoreCase));
-            return song;
-        }
 
         internal Song Pick(Status status)
         {
